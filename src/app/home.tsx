@@ -1,34 +1,10 @@
 'use client'
 import { useEffect, useState, useRef } from 'react';
 import Head from 'next/head';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-// Workaround for useRouter
-function useCustomRouter(): {
-  query: Record<string, string>;
-  push: (url: string) => void;
-  isReady: boolean;
-} {
-  const searchParams = useSearchParams();
-  const [query, setQuery] = useState<Record<string, string>>({});
-  const [isReady, setIsReady] = useState(false);
 
-  useEffect(() => {
-    const queryObj: Record<string, string> = {};
-    searchParams.forEach((value, key) => {
-      queryObj[key] = value;
-    });
-    setQuery(queryObj);
-    setIsReady(true);
-  }, [searchParams]);
-
-  const push = (url: string) => {
-    window.history.pushState({}, '', url);
-  };
-
-  return { query, push, isReady };
-}
 
 // Define types for our data based on the API response
 interface Doctor {
@@ -55,7 +31,9 @@ interface Doctor {
 }
 
 export default function Home() {
-  const router = useCustomRouter();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [filteredDoctors, setFilteredDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,7 +53,6 @@ export default function Home() {
   const [allSpecialties, setAllSpecialties] = useState<string[]>([]);
   
   // Mobile menu state
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   
   // Fetch doctors data from API
@@ -113,9 +90,9 @@ export default function Home() {
   
   // Apply URL params on initial load and when URL changes
   useEffect(() => {
-    if (router.isReady && doctors.length > 0) {
-      const { search, consultType, specialties, sortBy } = router.query;
-      
+    if (router && doctors.length > 0) {
+      const searchParamsString = searchParams.get('');
+      const { search, consultType, specialties, sortBy } = searchParamsString ? JSON.parse(searchParamsString) : {};      
       // Set search query from URL
       if (typeof search === 'string') {
         setSearchQuery(search);
@@ -136,7 +113,7 @@ export default function Home() {
         setSortBy(sortBy);
       }
     }
-  }, [router.isReady, router.query, doctors]);
+  }, [ searchParams.get("") , doctors]);
   
   // Apply filters whenever filter states change
   useEffect(() => {
@@ -261,10 +238,6 @@ export default function Home() {
     setMobileFiltersOpen(!mobileFiltersOpen);
   };
   
-  // Toggle mobile menu
-  const toggleMobileMenu = () => {
-    setMobileMenuOpen(!mobileMenuOpen);
-  };
   
   // Close suggestions when clicking outside
   const searchRef = useRef<HTMLDivElement>(null);
@@ -301,16 +274,6 @@ export default function Home() {
       <header className="bg-blue-600 sticky top-0 z-50 shadow-md">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center">
-            {/* Mobile hamburger menu */}
-            <button 
-              className="mr-4 text-white md:hidden"
-              onClick={toggleMobileMenu}
-              data-testid="hamburger-menu"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
             
             {/* Logo */}
             <Link href="/" className="text-white font-bold text-xl">
@@ -319,7 +282,7 @@ export default function Home() {
           </div>
           
           {/* Global search bar for desktop */}
-          <div className="hidden md:block w-1/2">
+          <div className="hidden md:block w-1/2 ">
             <div className="relative" ref={searchRef}>
               <input
                 type="text"
@@ -327,10 +290,10 @@ export default function Home() {
                 value={searchQuery}
                 onChange={handleSearchChange}
                 data-testid="header-search"
-                className="w-full py-2 px-4 rounded-full border-none focus:ring-2 focus:ring-blue-300 focus:outline-none"
+                className="w-full py-2 px-4 rounded-full border-none focus:ring-2 focus:ring-blue-300 focus:outline-none "
               />
               {showSuggestions && suggestions.length > 0 && (
-                <div className="absolute z-10 w-full bg-white rounded-lg mt-1 shadow-lg border border-gray-200">
+                <div className="absolute z-10 w-full bg-white  rounded-lg mt-1 shadow-lg border border-gray-200">
                   {suggestions.map((doctor) => (
                     <div
                       key={doctor.id}
@@ -346,7 +309,7 @@ export default function Home() {
                         )}
                       </div>
                       <div>
-                        <p className="font-medium">{doctor.name}</p>
+                        <p className="font-medium text-black">{doctor.name}</p>
                         <p className="text-xs text-gray-600">
                           {doctor.specialities.map(s => s.name).join(', ')}
                         </p>
@@ -357,69 +320,10 @@ export default function Home() {
               )}
             </div>
           </div>
-          
-          <div className="text-white">
-            <Link href="/login" className="hidden md:inline-block mr-4">Login</Link>
-            <button className="bg-white text-blue-600 px-4 py-1 rounded-full font-medium hover:bg-blue-50 transition">
-              Sign Up
-            </button>
-          </div>
         </div>
       </header>
       
-      {/* Mobile menu */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 bg-white z-40 md:hidden">
-          <div className="p-4">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold">Menu</h2>
-              <button onClick={toggleMobileMenu}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            {/* Mobile search */}
-            <div className="mb-6" ref={searchRef}>
-              <input
-                type="text"
-                placeholder="Search for doctors, specialties..."
-                value={searchQuery}
-                onChange={handleSearchChange}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-              {showSuggestions && suggestions.length > 0 && (
-                <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-lg mt-1 shadow-lg">
-                  {suggestions.map((doctor) => (
-                    <div
-                      key={doctor.id}
-                      onClick={() => {
-                        handleSuggestionClick(doctor.name);
-                        setMobileMenuOpen(false);
-                      }}
-                      className="p-3 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
-                    >
-                      {doctor.name}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            
-            <nav className="space-y-6">
-              <Link href="/find-doctors" className="block py-2 border-b border-gray-200">Find Doctors</Link>
-              <Link href="/hospitals" className="block py-2 border-b border-gray-200">Hospitals</Link>
-              <Link href="/specialities" className="block py-2 border-b border-gray-200">Specialities</Link>
-              <Link href="/health-packages" className="block py-2 border-b border-gray-200">Health Packages</Link>
-              <div className="pt-4">
-                <Link href="/login" className="block py-2 text-blue-600">Login</Link>
-                <Link href="/signup" className="block py-2 text-blue-600">Sign Up</Link>
-              </div>
-            </nav>
-          </div>
-        </div>
-      )}
+      
       
       <main className="container mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-6">
@@ -446,7 +350,7 @@ export default function Home() {
               value={searchQuery}
               onChange={handleSearchChange}
               data-testid="autocomplete-input"
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-black"
             />
             <button className="absolute right-3 top-3 text-gray-400">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -487,13 +391,23 @@ export default function Home() {
             <div className="bg-white p-4 rounded-lg shadow-sm">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-bold text-gray-700">Filters</h3>
-                <button 
-                  onClick={clearAllFilters}
-                  className="text-sm text-blue-600 hover:text-blue-800"
-                  data-testid="clear-all-filters"
-                >
-                  Clear All
-                </button>
+                <div className='flex space-x-2'>
+                  <button 
+                    onClick={toggleMobileFilters}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                    data-testid="clear-all-filters"
+                  >
+                    Close                
+                  </button>
+                  <button
+                    onClick={clearAllFilters}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                    data-testid="clear-all-filters"
+                  >
+                    Clear All
+                  </button>
+                </div>
+                
               </div>
               
               {/* Consultation Type Filter */}
@@ -721,28 +635,7 @@ export default function Home() {
               </div>
             )}
             
-            {/* Pagination */}
-            {filteredDoctors.length > 0 && (
-              <div className="mt-6 flex justify-center">
-                <div className="inline-flex rounded-md shadow">
-                  <button className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-l-md">
-                    Previous
-                  </button>
-                  <button className="py-2 px-4 border-t border-b border-gray-300 bg-blue-50 text-sm font-medium text-blue-700">
-                    1
-                  </button>
-                  <button className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                    2
-                  </button>
-                  <button className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                    3
-                  </button>
-                  <button className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-r-md">
-                    Next
-                  </button>
-                </div>
-              </div>
-            )}
+        
           </div>
         </div>
       </main>
